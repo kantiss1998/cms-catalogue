@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaPlus, FaTimes } from "react-icons/fa";
+import { FaSearch, FaPlus, FaTimes, FaUpload } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import API from "../utils/api";
 import Modal from "./re-usable-components/Modal";
@@ -14,7 +14,10 @@ const ProductTable = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadLoading, setUploadLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     subName: "",
@@ -42,6 +45,56 @@ const ProductTable = () => {
       toast.error("Failed to load products");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files.length > 4) {
+    toast.error("Maximum 4 files allowed");
+    e.target.value = null; // Reset input
+    return;
+  }
+  const files = Array.from(e.target.files);
+  setSelectedFiles(files);
+  };
+
+  const uploadImage = (item) => {
+    setSelectedProduct(item);
+    setIsUploadModalOpen(true);
+  };
+
+  const handleImageUpload = async (e) => {
+    e.preventDefault();
+    
+    if (selectedFiles.length === 0) {
+      toast.error("Please select files to upload");
+      return;
+    }
+
+    if (selectedFiles.length > 4) {
+      toast.error("Maximum 4 files allowed");
+      return;
+    }
+
+    try {
+      setUploadLoading(true);
+      
+      const formData = new FormData();
+      selectedFiles.forEach((file) => {
+        formData.append('photos', file);
+      });
+
+      await API.updateProductImages(selectedProduct.id, selectedFiles);
+      
+      setIsUploadModalOpen(false);
+      setSelectedFiles([]);
+      toast.success("Images uploaded successfully");
+      await fetchProducts(dataFilter);
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      toast.error(error.response?.data?.message || "Failed to upload images");
+    } finally {
+      setUploadLoading(false);
     }
   };
 
@@ -120,10 +173,6 @@ const ProductTable = () => {
     setFormData(item);
     setIsEditModalOpen(true);
   };
-
-  const uploadImage = () => {
-    console.log("masuk")
-  }
 
   const openDeleteModal = (item) => {
     setSelectedProduct(item);
@@ -240,7 +289,7 @@ const ProductTable = () => {
                           Edit
                         </button>
                         <button
-                          onClick={() => uploadImage()}
+                          onClick={() => uploadImage(item)}
                           className="text-orange-600 mr-4 hover:text-orange-500"
                         >
                           Upload
@@ -343,7 +392,83 @@ const ProductTable = () => {
         </form>
       </Modal>
 
-      {/* Edit Product Modal */}
+      {/* Upload Product Modal */}
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={() => {
+          setIsUploadModalOpen(false);
+          setSelectedFiles([]);
+        }}
+        title="Upload Product Images"
+      >
+        <form onSubmit={handleImageUpload}>
+          <div className="mb-4">
+            <label className="block text-gray-300 mb-2">
+              Select Images (up to 4 files)
+            </label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileChange}
+              className="w-full bg-gray-700 text-white rounded-lg px-4 py-2"
+              disabled={uploadLoading}
+              max="4"
+            />
+            <p className="text-sm text-gray-400 mt-2">
+              Selected files: {selectedFiles.length}
+            </p>
+          </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="mb-4">
+              <p className="text-gray-300 mb-2">Selected Files:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {selectedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="bg-gray-700 p-2 rounded-lg text-gray-300 text-sm truncate"
+                  >
+                    {file.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                setIsUploadModalOpen(false);
+                setSelectedFiles([]);
+              }}
+              className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+              disabled={uploadLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+              disabled={uploadLoading || selectedFiles.length === 0}
+            >
+              {uploadLoading ? (
+                <>
+                  <FaUpload size={14} className="animate-bounce" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <FaUpload size={14} />
+                  Upload Images
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Edit Product Modal */}
       <Modal
         isOpen={isEditModalOpen}

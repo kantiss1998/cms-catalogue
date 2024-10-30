@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaPlus, FaTimes } from "react-icons/fa";
+import { FaSearch, FaPlus, FaTimes, FaUpload } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import API from "../utils/api";
 import Modal from "./re-usable-components/Modal";
@@ -14,6 +14,9 @@ const ColorTable = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     hexCode: "",
@@ -21,16 +24,16 @@ const ColorTable = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const location = useLocation()
-  let dataFilter  = {}
+  const location = useLocation();
+  let dataFilter = {};
   if (location.state !== null) {
-    dataFilter = { productId: location.state }
+    dataFilter = { productId: location.state };
   }
-
   const fetchColor = async () => {
     try {
       setIsLoading(true);
       const data = await API.fetchColor(dataFilter);
+      setFormData({ ...formData, productId: data[0].productId });
       setColors(data);
       setFilteredColors(data);
     } catch (error) {
@@ -40,7 +43,6 @@ const ColorTable = () => {
       setIsLoading(false);
     }
   };
-
   const handleSearch = (e) => {
     const term = e.target.value.toLowerCase();
     setSearchTerm(term);
@@ -113,9 +115,37 @@ const ColorTable = () => {
     setIsEditModalOpen(true);
   };
 
-  const uploadImage = () => {
-    console.log("masuk")
-  }
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+    console.log(e.target.files[0]);
+  };
+
+  const uploadImage = (color) => {
+    setSelectedColor(color);
+    setIsUploadModalOpen(true);
+  };
+
+  const handleImageUpload = async (e) => {
+    e.preventDefault();
+
+    if (!selectedFile) {
+      toast.error("Please select an image to upload");
+      return;
+    }
+
+    try {
+      setUploadLoading(true);
+      await API.updateColorImage(selectedColor.id, selectedFile);
+      toast.success("Image uploaded successfully");
+      setIsUploadModalOpen(false);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setUploadLoading(false);
+      setSelectedFile(null);
+    }
+  };
 
   const openDeleteModal = (color) => {
     setSelectedColor(color);
@@ -203,7 +233,7 @@ const ColorTable = () => {
                           Edit
                         </button>
                         <button
-                          onClick={() => uploadImage()}
+                          onClick={() => uploadImage(color)}
                           className="text-orange-600 mr-4"
                         >
                           Upload
@@ -234,6 +264,7 @@ const ColorTable = () => {
             type="text"
             placeholder="Color Name"
             value={formData.name}
+            className="text-black"
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
           />
@@ -241,12 +272,76 @@ const ColorTable = () => {
             type="text"
             placeholder="Hex Code"
             value={formData.hexCode}
+            className="text-black"
             onChange={(e) =>
               setFormData({ ...formData, hexCode: e.target.value })
             }
             required
           />
           <button type="submit">{isLoading ? "Adding..." : "Add Color"}</button>
+        </form>
+      </Modal>
+
+      {/* Upload Image Modal */}
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={() => {
+          setIsUploadModalOpen(false);
+          setSelectedFile(null);
+        }}
+        title="Upload Color Image"
+      >
+        <form onSubmit={handleImageUpload}>
+          <div className="mb-4">
+            <label className="block text-gray-300 mb-2">Select Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="w-full bg-gray-700 text-white rounded-lg px-4 py-2"
+              disabled={uploadLoading}
+            />
+          </div>
+
+          {selectedFile && (
+            <div className="mb-4">
+              <p className="text-gray-300 mb-2">Selected File:</p>
+              <div className="bg-gray-700 p-2 rounded-lg text-gray-300 text-sm truncate">
+                {selectedFile.name}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                setIsUploadModalOpen(false);
+                setSelectedFile(null);
+              }}
+              className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+              disabled={uploadLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+              disabled={uploadLoading || !selectedFile}
+            >
+              {uploadLoading ? (
+                <>
+                  <FaUpload size={14} className="animate-bounce" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <FaUpload size={14} />
+                  Upload Images
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </Modal>
 
@@ -261,12 +356,14 @@ const ColorTable = () => {
             type="text"
             placeholder="Color Name"
             value={formData.name}
+            className="text-black"
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
           />
           <input
             type="text"
             placeholder="Hex Code"
+            className="text-black"
             value={formData.hexCode}
             onChange={(e) =>
               setFormData({ ...formData, hexCode: e.target.value })

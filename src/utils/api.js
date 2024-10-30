@@ -81,6 +81,48 @@ class API {
   static async deleteColor(colorId) {
     await axios.delete(`${API_BASE_URL}/color/${colorId}`);
   }
+
+  static async updateProductImages(productId, imageFiles) {
+    const formData = new FormData();
+    imageFiles.forEach((file) => {
+      formData.append("photos", file);
+    });
+
+    const response = await axios.patch(
+      `${API_BASE_URL}/productimage/${productId}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    console.log(response)
+    return response.data;
+
+  }
+
+  static async updateColorImage(colorId, imageFile) {
+    const formData = new FormData();
+    formData.append("photo", imageFile);
+
+    for (let pair of formData.entries()) {
+      console.log(pair[0]+ ', ' + pair[1]); 
+  }
+
+    const response = await axios({
+        
+        method: 'PATCH',
+        url : `${API_BASE_URL}/colorimage/${colorId}`,
+        data: formData,
+        headers: {
+          "Content-Type": "multipart/form-data"
+        },
+
+      }
+    );
+    return response.data;
+  }
 }
 
 export default API;
