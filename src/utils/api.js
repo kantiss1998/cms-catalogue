@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:3000";
+// const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "https://xeric-sandi-kantiss-cb026c8c.koyeb.app";
 
 class API {
   static async fetchAll() {
@@ -88,6 +89,7 @@ class API {
       formData.append("photos", file);
     });
 
+    console.log(imageFiles)
     const response = await axios.patch(
       `${API_BASE_URL}/productimage/${productId}`,
       formData,
